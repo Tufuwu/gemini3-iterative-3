@@ -1,184 +1,412 @@
-# inline-css [![npm](http://img.shields.io/npm/v/inline-css.svg?style=flat)](https://badge.fury.io/js/inline-css) ![Build Status](https://github.com/jonkemp/inline-css/actions/workflows/main.yml/badge.svg?branch=master) [![Coverage Status](https://coveralls.io/repos/jonkemp/inline-css/badge.svg?branch=master&service=github)](https://coveralls.io/github/jonkemp/inline-css?branch=master)
+<table><thead>
+  <tr>
+    <th>Linux</th>
+    <th>OS X</th>
+    <th>Windows</th>
+    <th>Coverage</th>
+    <th>Downloads</th>
+  </tr>
+</thead><tbody><tr>
+  <td colspan="2" align="center">
+    <a href="https://github.com/kaelzhang/node-ignore/actions/workflows/nodejs.yml">
+    <img
+      src="https://github.com/kaelzhang/node-ignore/actions/workflows/nodejs.yml/badge.svg"
+      alt="Build Status" /></a>
+  </td>
+  <td align="center">
+    <a href="https://ci.appveyor.com/project/kaelzhang/node-ignore">
+    <img
+      src="https://ci.appveyor.com/api/projects/status/github/kaelzhang/node-ignore?branch=master&svg=true"
+      alt="Windows Build Status" /></a>
+  </td>
+  <td align="center">
+    <a href="https://codecov.io/gh/kaelzhang/node-ignore">
+    <img
+      src="https://codecov.io/gh/kaelzhang/node-ignore/branch/master/graph/badge.svg"
+      alt="Coverage Status" /></a>
+  </td>
+  <td align="center">
+    <a href="https://www.npmjs.org/package/ignore">
+    <img
+      src="http://img.shields.io/npm/dm/ignore.svg"
+      alt="npm module downloads per month" /></a>
+  </td>
+</tr></tbody></table>
 
-[![NPM](https://nodei.co/npm/inline-css.png?downloads=true)](https://nodei.co/npm/inline-css/)
+# ignore
 
-> Inline your CSS properties into the `style` attribute in an html file. Useful for emails.
+`ignore` is a manager, filter and parser which implemented in pure JavaScript according to the [.gitignore spec 2.22.1](http://git-scm.com/docs/gitignore).
 
-Inspired by the [juice](https://github.com/Automattic/juice) library.
+`ignore` is used by eslint, gitbook and [many others](https://www.npmjs.com/browse/depended/ignore).
 
-## Features
-- Uses [cheerio](https://github.com/cheeriojs/cheerio) instead of jsdom
-- Works on Windows
-- Preserves Doctype
-- Modular
-- Gets your CSS automatically through style and link tags
-- Functions return [A+ compliant](https://promisesaplus.com/) Promises
+Pay **ATTENTION** that [`minimatch`](https://www.npmjs.org/package/minimatch) (which used by `fstream-ignore`) does not follow the gitignore spec.
 
-## How It Works
+To filter filenames according to a .gitignore file, I recommend this npm package, `ignore`.
 
-This module takes html and inlines the CSS properties into the style attribute.
+To parse an `.npmignore` file, you should use `minimatch`, because an `.npmignore` file is parsed by npm using `minimatch` and it does not work in the .gitignore way.
 
-`/path/to/file.html`:
-```html
-<html>
-<head>
-  <style>
-    p { color: red; }
-  </style>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <p>Test</p>
-</body>
-</html>
-```
+### Tested on
 
-`style.css`
-```css
-p {
-  text-decoration: underline;
-}
-```
+`ignore` is fully tested, and has more than **five hundreds** of unit tests.
 
-Output:
-```html
-<html>
-<head>
-</head>
-<body>
-  <p style="color: red; text-decoration: underline;">Test</p>
-</body>
-</html>
-```
+- Linux + Node: `0.8` - `7.x`
+- Windows + Node: `0.10` - `7.x`, node < `0.10` is not tested due to the lack of support of appveyor.
 
-## What is this useful for ?
+Actually, `ignore` does not rely on any versions of node specially.
 
-- HTML emails. For a comprehensive list of supported selectors see
-[here](http://www.campaignmonitor.com/css/)
-- Embedding HTML in 3rd-party websites.
-- Performance. Downloading external stylesheets delays the rendering of the page in the browser. Inlining CSS speeds up this process because the browser doesn't have to wait to download an external stylesheet to start rendering the page.
+Since `4.0.0`, ignore will no longer support `node < 6` by default, to use in node < 6, `require('ignore/legacy')`. For details, see [CHANGELOG](https://github.com/kaelzhang/node-ignore/blob/master/CHANGELOG.md).
 
+## Table Of Main Contents
+
+- [Usage](#usage)
+- [`Pathname` Conventions](#pathname-conventions)
+- See Also:
+  - [`glob-gitignore`](https://www.npmjs.com/package/glob-gitignore) matches files using patterns and filters them according to gitignore rules.
+- [Upgrade Guide](#upgrade-guide)
 
 ## Install
 
-Install with [npm](https://npmjs.org/package/inline-css)
-
-```
-npm install --save inline-css
+```sh
+npm i ignore
 ```
 
 ## Usage
 
 ```js
-var inlineCss = require('inline-css');
-var html = "<style>div{color:red;}</style><div/>";
-
-inlineCss(html, options)
-    .then(function(html) { console.log(html); });
+import ignore from 'ignore'
+const ig = ignore().add(['.abc/*', '!.abc/d/'])
 ```
 
-## API
+### Filter the given paths
 
-### inlineCss(html, options)
+```js
+const paths = [
+  '.abc/a.js',    // filtered out
+  '.abc/d/e.js'   // included
+]
 
+ig.filter(paths)        // ['.abc/d/e.js']
+ig.ignores('.abc/a.js') // true
+```
 
-#### options.extraCss
+### As the filter function
 
-Type: `String`  
-Default: `""`
+```js
+paths.filter(ig.createFilter()); // ['.abc/d/e.js']
+```
 
-Extra css to apply to the file.
+### Win32 paths will be handled
 
+```js
+ig.filter(['.abc\\a.js', '.abc\\d\\e.js'])
+// if the code above runs on windows, the result will be
+// ['.abc\\d\\e.js']
+```
 
-#### options.applyStyleTags
+## Why another ignore?
 
-Type: `Boolean`  
-Default: `true`
+- `ignore` is a standalone module, and is much simpler so that it could easy work with other programs, unlike [isaacs](https://npmjs.org/~isaacs)'s [fstream-ignore](https://npmjs.org/package/fstream-ignore) which must work with the modules of the fstream family.
 
-Whether to inline styles in `<style></style>`.
+- `ignore` only contains utility methods to filter paths according to the specified ignore rules, so
+  - `ignore` never try to find out ignore rules by traversing directories or fetching from git configurations.
+  - `ignore` don't cares about sub-modules of git projects.
 
+- Exactly according to [gitignore man page](http://git-scm.com/docs/gitignore), fixes some known matching issues of fstream-ignore, such as:
+  - '`/*.js`' should only match '`a.js`', but not '`abc/a.js`'.
+  - '`**/foo`' should match '`foo`' anywhere.
+  - Prevent re-including a file if a parent directory of that file is excluded.
+  - Handle trailing whitespaces:
+    - `'a '`(one space) should not match `'a  '`(two spaces).
+    - `'a \ '` matches `'a  '`
+  - All test cases are verified with the result of `git check-ignore`.
 
-#### options.applyLinkTags
+# Methods
 
-Type: `Boolean`  
-Default: `true`
+## .add(pattern: string | Ignore): this
+## .add(patterns: Array<string | Ignore>): this
 
-Whether to resolve `<link rel="stylesheet">` tags and inline the resulting styles.
+- **pattern** `String | Ignore` An ignore pattern string, or the `Ignore` instance
+- **patterns** `Array<String | Ignore>` Array of ignore patterns.
 
+Adds a rule or several rules to the current manager.
 
-#### options.removeStyleTags
+Returns `this`
 
-Type: `Boolean`  
-Default: `true`
+Notice that a line starting with `'#'`(hash) is treated as a comment. Put a backslash (`'\'`) in front of the first hash for patterns that begin with a hash, if you want to ignore a file with a hash at the beginning of the filename.
 
-Whether to remove the original `<style></style>` tags after (possibly) inlining the css from them.
+```js
+ignore().add('#abc').ignores('#abc')    // false
+ignore().add('\\#abc').ignores('#abc')   // true
+```
 
+`pattern` could either be a line of ignore pattern or a string of multiple ignore patterns, which means we could just `ignore().add()` the content of a ignore file:
 
-#### options.removeLinkTags
+```js
+ignore()
+.add(fs.readFileSync(filenameOfGitignore).toString())
+.filter(filenames)
+```
 
-Type: `Boolean`  
-Default: `true`
+`pattern` could also be an `ignore` instance, so that we could easily inherit the rules of another `Ignore` instance.
 
-Whether to remove the original `<link rel="stylesheet">` tags after (possibly) inlining the css from them.
+## <strike>.addIgnoreFile(path)</strike>
 
-#### options.url
+REMOVED in `3.x` for now.
 
-Type: `String`  
-Default: `filePath`
+To upgrade `ignore@2.x` up to `3.x`, use
 
-How to resolve hrefs. **Required**.
+```js
+import fs from 'fs'
 
-#### options.preserveMediaQueries
+if (fs.existsSync(filename)) {
+  ignore().add(fs.readFileSync(filename).toString())
+}
+```
 
-Type: `Boolean`  
-Default: `false`
+instead.
 
-Preserves all media queries (and contained styles) within `<style></style>` tags as a refinement when `removeStyleTags` is `true`. Other styles are removed.
+## .filter(paths: Array&lt;Pathname&gt;): Array&lt;Pathname&gt;
 
-#### options.applyWidthAttributes
+```ts
+type Pathname = string
+```
 
-Type: `Boolean`  
-Default: `false`
+Filters the given array of pathnames, and returns the filtered array.
 
-Whether to use any CSS pixel widths to create `width` attributes on elements.
+- **paths** `Array.<Pathname>` The array of `pathname`s to be filtered.
 
-#### options.applyTableAttributes
+### `Pathname` Conventions:
 
-Type: `Boolean`  
-Default: `false`
+#### 1. `Pathname` should be a `path.relative()`d pathname
 
-Whether to apply the `border`, `cellpadding` and `cellspacing` attributes to `table` elements.
+`Pathname` should be a string that have been `path.join()`ed, or the return value of `path.relative()` to the current directory,
 
-#### options.removeHtmlSelectors
+```js
+// WRONG, an error will be thrown
+ig.ignores('./abc')
 
-Type: `Boolean`  
-Default: `false`
+// WRONG, for it will never happen, and an error will be thrown
+// If the gitignore rule locates at the root directory,
+// `'/abc'` should be changed to `'abc'`.
+// ```
+// path.relative('/', '/abc')  -> 'abc'
+// ```
+ig.ignores('/abc')
 
-Whether to remove the `class` and `id` attributes from the markup.
+// WRONG, that it is an absolute path on Windows, an error will be thrown
+ig.ignores('C:\\abc')
 
-#### options.codeBlocks
+// Right
+ig.ignores('abc')
 
-Type: `Object`  
-Default: `{ EJS: { start: '<%', end: '%>' }, HBS: { start: '{{', end: '}}' } }`
+// Right
+ig.ignores(path.join('./abc'))  // path.join('./abc') -> 'abc'
+```
 
-An object where each value has a `start` and `end` to specify fenced code blocks that should be ignored during parsing and inlining. For example, Handlebars (hbs) templates are `HBS: {start: '{{', end: '}}'}`. `codeBlocks` can fix problems where otherwise inline-css might interpret code like `<=` as HTML, when it is meant to be template language code. Note that `codeBlocks` is a dictionary which can contain many different code blocks, so don't do `codeBlocks: {...}` do `codeBlocks.myBlock = {...}`.
+In other words, each `Pathname` here should be a relative path to the directory of the gitignore rules.
 
-### Special markup
+Suppose the dir structure is:
 
-#### data-embed
+```
+/path/to/your/repo
+    |-- a
+    |   |-- a.js
+    |
+    |-- .b
+    |
+    |-- .c
+         |-- .DS_store
+```
 
-When a data-embed attribute is present on a <style></style> tag, inline-css will not inline the styles and will not remove the <style></style> tags.
+Then the `paths` might be like this:
 
-This can be used to embed email client support hacks that rely on css selectors into your email templates.
+```js
+[
+  'a/a.js'
+  '.b',
+  '.c/.DS_store'
+]
+```
 
-### cheerio options
+#### 2. filenames and dirnames
 
-Options to passed to [cheerio](https://github.com/cheeriojs/cheerio).
+`node-ignore` does NO `fs.stat` during path matching, so for the example below:
 
-## Contributing
+```js
+// First, we add a ignore pattern to ignore a directory
+ig.add('config/')
 
-See the [CONTRIBUTING Guidelines](https://github.com/jonkemp/inline-css/blob/master/CONTRIBUTING.md)
+// `ig` does NOT know if 'config', in the real world,
+//   is a normal file, directory or something.
 
-## License
+ig.ignores('config')
+// `ig` treats `config` as a file, so it returns `false`
 
-MIT © [Jonathan Kemp](http://jonkemp.com)
+ig.ignores('config/')
+// returns `true`
+```
+
+Specially for people who develop some library based on `node-ignore`, it is important to understand that.
+
+Usually, you could use [`glob`](http://npmjs.org/package/glob) with `option.mark = true` to fetch the structure of the current directory:
+
+```js
+import glob from 'glob'
+
+glob('**', {
+  // Adds a / character to directory matches.
+  mark: true
+}, (err, files) => {
+  if (err) {
+    return console.error(err)
+  }
+
+  let filtered = ignore().add(patterns).filter(files)
+  console.log(filtered)
+})
+```
+
+## .ignores(pathname: Pathname): boolean
+
+> new in 3.2.0
+
+Returns `Boolean` whether `pathname` should be ignored.
+
+```js
+ig.ignores('.abc/a.js')    // true
+```
+
+## .createFilter()
+
+Creates a filter function which could filter an array of paths with `Array.prototype.filter`.
+
+Returns `function(path)` the filter function.
+
+## .test(pathname: Pathname) since 5.0.0
+
+Returns `TestResult`
+
+```ts
+interface TestResult {
+  ignored: boolean
+  // true if the `pathname` is finally unignored by some negative pattern
+  unignored: boolean
+}
+```
+
+- `{ignored: true, unignored: false}`: the `pathname` is ignored
+- `{ignored: false, unignored: true}`: the `pathname` is unignored
+- `{ignored: false, unignored: false}`: the `pathname` is never matched by any ignore rules.
+
+## static `ignore.isPathValid(pathname): boolean` since 5.0.0
+
+Check whether the `pathname` is an valid `path.relative()`d path according to the [convention](#1-pathname-should-be-a-pathrelatived-pathname).
+
+This method is **NOT** used to check if an ignore pattern is valid.
+
+```js
+ignore.isPathValid('./foo')  // false
+```
+
+## ignore(options)
+
+### `options.ignorecase` since 4.0.0
+
+Similar as the `core.ignorecase` option of [git-config](https://git-scm.com/docs/git-config), `node-ignore` will be case insensitive if `options.ignorecase` is set to `true` (the default value), otherwise case sensitive.
+
+```js
+const ig = ignore({
+  ignorecase: false
+})
+
+ig.add('*.png')
+
+ig.ignores('*.PNG')  // false
+```
+
+### `options.ignoreCase?: boolean` since 5.2.0
+
+Which is alternative to `options.ignoreCase`
+
+### `options.allowRelativePaths?: boolean` since 5.2.0
+
+This option brings backward compatibility with projects which based on `ignore@4.x`. If `options.allowRelativePaths` is `true`, `ignore` will not check whether the given path to be tested is [`path.relative()`d](#pathname-conventions).
+
+However, passing a relative path, such as `'./foo'` or `'../foo'`, to test if it is ignored or not is not a good practise, which might lead to unexpected behavior
+
+```js
+ignore({
+  allowRelativePaths: true
+}).ignores('../foo/bar.js') // And it will not throw
+```
+
+****
+
+# Upgrade Guide
+
+## Upgrade 4.x -> 5.x
+
+Since `5.0.0`, if an invalid `Pathname` passed into `ig.ignores()`, an error will be thrown, unless `options.allowRelative = true` is passed to the `Ignore` factory.
+
+While `ignore < 5.0.0` did not make sure what the return value was, as well as
+
+```ts
+.ignores(pathname: Pathname): boolean
+
+.filter(pathnames: Array<Pathname>): Array<Pathname>
+
+.createFilter(): (pathname: Pathname) => boolean
+
+.test(pathname: Pathname): {ignored: boolean, unignored: boolean}
+```
+
+See the convention [here](#1-pathname-should-be-a-pathrelatived-pathname) for details.
+
+If there are invalid pathnames, the conversion and filtration should be done by users.
+
+```js
+import {isPathValid} from 'ignore' // introduced in 5.0.0
+
+const paths = [
+  // invalid
+  //////////////////
+  '',
+  false,
+  '../foo',
+  '.',
+  //////////////////
+
+  // valid
+  'foo'
+]
+.filter(isValidPath)
+
+ig.filter(paths)
+```
+
+## Upgrade 3.x -> 4.x
+
+Since `4.0.0`, `ignore` will no longer support node < 6, to use `ignore` in node < 6:
+
+```js
+var ignore = require('ignore/legacy')
+```
+
+## Upgrade 2.x -> 3.x
+
+- All `options` of 2.x are unnecessary and removed, so just remove them.
+- `ignore()` instance is no longer an [`EventEmitter`](nodejs.org/api/events.html), and all events are unnecessary and removed.
+- `.addIgnoreFile()` is removed, see the [.addIgnoreFile](#addignorefilepath) section for details.
+
+****
+
+# Collaborators
+
+- [@whitecolor](https://github.com/whitecolor) *Alex*
+- [@SamyPesse](https://github.com/SamyPesse) *Samy Pessé*
+- [@azproduction](https://github.com/azproduction) *Mikhail Davydov*
+- [@TrySound](https://github.com/TrySound) *Bogdan Chadkin*
+- [@JanMattner](https://github.com/JanMattner) *Jan Mattner*
+- [@ntwb](https://github.com/ntwb) *Stephen Edgar*
+- [@kasperisager](https://github.com/kasperisager) *Kasper Isager*
+- [@sandersn](https://github.com/sandersn) *Nathan Shively-Sanders*
