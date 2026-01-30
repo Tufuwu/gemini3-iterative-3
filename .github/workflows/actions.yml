@@ -1,4 +1,4 @@
-name: Python CI
+name: CI
 
 on:
   push:
@@ -8,24 +8,46 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - python-version: "3.8"
+            toxenv: cover
+          - python-version: "3.8"
+            toxenv: black
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.9"
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Install Poetry
-      run: |
-        pip install --user poetry
-        echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
 
-    - name: Install dependencies
-      run: make setup
+      - name: Install dependencies
+        run: |
+          npm i -g elm
+          python -m pip install --upgrade pip
+          pip install tox tox-gh-actions coveralls
 
-    - name: Run tests
-      run: make test
+      - name: Run tox
+        run: tox
+        env:
+          TOXENV: ${{ matrix.toxenv }}
+          # Pass GITHUB_TOKEN to tox in case coveralls is called inside the tox environment
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COVERALLS_SERVICE_NAME: github
+
+      - name: Upload Coverage
+        if: success() && matrix.toxenv == 'cover'
+        run: coveralls
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COVERALLS_SERVICE_NAME: github
 

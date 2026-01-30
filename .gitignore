@@ -1,11 +1,20 @@
-.vscode
-**/*.pyc
-**/.cache
-**/__pycache__
-*.egg-info
-dist
-build
+# Python
+*.pyc
+.eggs/
+webassets_elm.egg-info/
+build/
+dist/
 
-delay_error.txt
-label_error.txt
-out.txt
+# Elm
+elm-stuff/
+node_modules/
+
+# Python third-party packages
+.coverage
+.python-version
+.tox
+cover/
+
+# OS, IDE & editor
+.DS_Store
+.ropeproject/
